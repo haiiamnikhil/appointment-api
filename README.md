@@ -1,3 +1,28 @@
+## Development & Setup
+
+### Requirements
+
+- **Python 3.10+**
+- **FastAPI**
+- **SQLAlchemy** (Native SQLite bindings mapped inherently via `Base.metadata.create_all(bind=engine)`)
+
+### Quick Start
+
+```bash
+# Optional Setup: Create Virtual Environment
+python -m venv venv
+source venv/bin/activate  # (Windows: venv\Scripts\activate)
+
+# 1. Install Dependencies
+pip install -r requirements.txt
+
+# 2. Boot Application
+python main.py
+```
+
+- **Interactive API Documentation (Swagger)**: http://127.0.0.1:8000/docs
+- **Alternative Redoc**: http://127.0.0.1:8000/redoc
+
 # Manage Appointments Microservice API
 
 A robust FastAPI backend microservice for scheduling, validating, and managing dynamic appointments. It uses SQLAlchemy for robust ORM data handling and Pydantic for rigid, granular input/output schema validation.
@@ -85,30 +110,3 @@ Dynamically manipulates strictly the database `status` indexing safely preventin
 ### 6. `DELETE /delete/{appointment_id}`
 
 Performs intuitive "Soft Deletions" targeting the ID and permanently appending the `"deleted"` string directly toward the database index cleanly.
-
----
-
-## Development & Setup
-
-### Requirements
-
-- **Python 3.10+**
-- **FastAPI**
-- **SQLAlchemy** (Native SQLite bindings mapped inherently via `Base.metadata.create_all(bind=engine)`)
-
-### Quick Start
-
-```bash
-# Optional Setup: Create Virtual Environment
-python -m venv venv
-source venv/bin/activate  # (Windows: venv\Scripts\activate)
-
-# 1. Install Dependencies
-pip install -r requirements.txt
-
-# 2. Boot Application
-python main.py
-```
-
-- **Interactive API Documentation (Swagger)**: http://127.0.0.1:8000/docs
-- **Alternative Redoc**: http://127.0.0.1:8000/redoc
