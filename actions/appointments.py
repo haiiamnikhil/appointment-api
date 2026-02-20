@@ -16,6 +16,24 @@ class AppointmentsActions:
         return appointments.AppointmentsData.get_all_appointments(db)
 
     @classmethod
+    def get_appointment_by_id(cls, db: Session, appointment_id: str):
+        database_appointment = appointments.AppointmentsData.get_appointment_by_id(db, appointment_id)
+        if not database_appointment:
+            raise HTTPException(status_code=404, detail="Appointment not found.")
+
+        appointment_status = database_appointment.status.value if hasattr(database_appointment.status, 'value') else database_appointment.status
+
+        return {
+            "id": str(database_appointment.id),
+            "title": database_appointment.title,
+            "description": database_appointment.description,
+            "start_time": database_appointment.start_time,
+            "end_time": database_appointment.end_time,
+            "status": appointment_status,
+            "participants": [{"id": str(participant.id), "full_name": participant.full_name} for participant in database_appointment.participant]
+        }
+
+    @classmethod
     def validate_conflict(cls, db: Session, request):
         all_appointments = cls.get_appointments(db=db)
         conflicts = conflict_engine.get_conflicts_for_timeslot(request.start_time, request.end_time, all_appointments)

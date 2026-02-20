@@ -32,6 +32,11 @@ def list_appointments_api(db: Session = Depends(get_db)):
     return appointments.AppointmentsActions.get_all_appointments(db=db)
 
 
+@router.get('/appointment/v1/{appointment_id}', response_model=response.AppointmentCreateResponse)
+def get_appointment_api(appointment_id: str, db: Session = Depends(get_db)):
+    return appointments.AppointmentsActions.get_appointment_by_id(db=db, appointment_id=appointment_id)
+
+
 @router.get('/appointment/v1/status/list/', response_model=response.StatusListResponse)
 def list_statuses_api():
     return appointments.AppointmentsActions.get_all_statuses()
