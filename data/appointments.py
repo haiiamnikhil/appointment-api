@@ -10,63 +10,70 @@ class AppointmentsData:
         return db.query(Appointment).order_by(Appointment.start_time.asc()).all()
 
     @staticmethod
-    def create_appointment(db: Session, request):
-        db_appointment = Appointment(
-            title=request.title,
-            description=request.description,
-            start_time=request.start_time,
-            end_time=request.end_time,
-            status=request.status if hasattr(request, "status") and request.status else "Scheduled"
+    def create_appointment(db: Session, appointment_request):
+        database_appointment = Appointment(
+            title=appointment_request.title,
+            description=appointment_request.description,
+            start_time=appointment_request.start_time,
+            end_time=appointment_request.end_time,
+            status="scheduled"
         )
         
-        for p_name in request.participants:
-            db_appointment.participant.append(
-                Participants(full_name=p_name)
+        for participant_name in appointment_request.participants:
+            database_appointment.participant.append(
+                Participants(full_name=participant_name)
             )
 
-        db.add(db_appointment)
+        db.add(database_appointment)
         db.commit()
-        db.refresh(db_appointment)
-        return db_appointment
+        db.refresh(database_appointment)
+        return database_appointment
 
     @staticmethod
     def get_appointment_by_id(db: Session, appointment_id: str):
         try:
-            uid = uuid.UUID(appointment_id)
+            appointment_uuid = uuid.UUID(appointment_id)
         except ValueError:
             return None
-        return db.query(Appointment).filter(Appointment.id == uid).first()
+        return db.query(Appointment).filter(Appointment.id == appointment_uuid).first()
 
     @staticmethod
-    def update_appointment(db: Session, appointment_id: str, request):
-        db_appointment = AppointmentsData.get_appointment_by_id(db, appointment_id)
-        if not db_appointment:
+    def update_appointment(db: Session, appointment_id: str, appointment_request):
+        database_appointment = AppointmentsData.get_appointment_by_id(db, appointment_id)
+        if not database_appointment:
             return None
         
-        db_appointment.title = request.title
-        db_appointment.description = request.description
-        db_appointment.start_time = request.start_time
-        db_appointment.end_time = request.end_time
+        if appointment_request.title is not None:
+            database_appointment.title = appointment_request.title
+        if appointment_request.description is not None:
+            database_appointment.description = appointment_request.description
+        if appointment_request.start_time is not None:
+            database_appointment.start_time = appointment_request.start_time
+        if appointment_request.end_time is not None:
+            database_appointment.end_time = appointment_request.end_time
+        if getattr(appointment_request, 'status', None) is not None:
+            database_appointment.status = appointment_request.status
         
-        # Replace participants
-        db.query(Participants).filter(Participants.appointment_id == db_appointment.id).delete()
-        db_appointment.participant = []
-        for p_name in request.participants:
-            db_appointment.participant.append(
-                Participants(full_name=p_name)
-            )
+        # Replace participants only if strictly provided
+        if appointment_request.participants is not None:
+            db.query(Participants).filter(Participants.appointment_id == database_appointment.id).delete()
+            database_appointment.participant = []
+            for participant_name in appointment_request.participants:
+                database_appointment.participant.append(
+                    Participants(full_name=participant_name)
+                )
 
         db.commit()
-        db.refresh(db_appointment)
-        return db_appointment
+        db.refresh(database_appointment)
+        return database_appointment
 
     @staticmethod
     def update_appointment_status(db: Session, appointment_id: str, status: str):
-        db_appointment = AppointmentsData.get_appointment_by_id(db, appointment_id)
-        if not db_appointment:
+        database_appointment = AppointmentsData.get_appointment_by_id(db, appointment_id)
+        if not database_appointment:
             return None
         
-        db_appointment.status = status
+        database_appointment.status = status
         db.commit()
-        db.refresh(db_appointment)
-        return db_appointment
+        db.refresh(database_appointment)
+        return database_appointment

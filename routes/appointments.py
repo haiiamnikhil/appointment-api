@@ -17,8 +17,8 @@ def get_db():
         db.close()
 
 
-@router.post('/ajax/v1/is-conflict/', response_model=response.AppointmentCreateResponse)
-def validate_conflict_ajax(appointment: request.AppointmentRequest, db: Session = Depends(get_db)):
+@router.post('/ajax/v1/is-conflict/', response_model=List[response.AppointmentValidationResponse])
+def validate_conflict_ajax(appointment: request.AppointmentValidationRequest, db: Session = Depends(get_db)):
     return appointments.AppointmentsActions.validate_conflict(db=db, request=appointment)
 
 
@@ -37,12 +37,12 @@ def update_appointment_api(appointment_id: str, appointment: request.Appointment
     return appointments.AppointmentsActions.update_appointment(db=db, appointment_id=appointment_id, request=appointment)
 
 
-@router.delete('/appointment/v1/delete/{appointment_id}')
+@router.delete('/appointment/v1/delete/{appointment_id}', response_model=response.AppointmentCreateResponse)
 def delete_appointment_api(appointment_id: str, db: Session = Depends(get_db)):
     return appointments.AppointmentsActions.delete_appointment(db=db, appointment_id=appointment_id)
 
 
-@router.patch('/appointment/v1/cancel/{appointment_id}')
-def cancel_appointment_api(appointment_id: str, db: Session = Depends(get_db)):
-    return appointments.AppointmentsActions.cancel_appointment(db=db, appointment_id=appointment_id)
+@router.patch('/appointment/v1/update/{appointment_id}', response_model=response.AppointmentCreateResponse)
+def patch_appointment_api(appointment_id: str, appointment: request.AppointmentStatusUpdate, db: Session = Depends(get_db)):
+    return appointments.AppointmentsActions.update_appointment(db=db, appointment_id=appointment_id, request=appointment)
 

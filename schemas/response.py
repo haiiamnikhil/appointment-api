@@ -17,10 +17,11 @@ class AppointmentCreateResponse(BaseModel):
     start_time: datetime
     end_time: datetime
     status: AppointmentStatus
-    is_conflict: bool
     message: str
-    participant: List[ParticipantResponse] = []
+    participants: List[ParticipantResponse] = []
 
     class Config:
         from_attributes = True
 
+class AppointmentValidationResponse(AppointmentCreateResponse):
+    is_conflict: bool

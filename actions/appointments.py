@@ -14,102 +14,116 @@ class AppointmentsActions:
     @classmethod
     def validate_conflict(cls, db: Session, request):
         all_appointments = cls.get_appointments(db=db)
-        is_conflict = conflict_engine.check_conflict(request.start_time, request.end_time, all_appointments)
-        return {
-            "id": "",
-            "title": request.title,
-            "start_time": request.start_time,
-            "end_time": request.end_time,
-            "status": "Scheduled",
-            "is_conflict": is_conflict,
-            "message": "Conflict found" if is_conflict else "No conflict",
-            "participant": []
-        }
+        conflicts = conflict_engine.get_conflicts_for_timeslot(request.start_time, request.end_time, all_appointments)
+        
+        response_list = []
+        for appointment in conflicts:
+            appointment_status = appointment.status.value if hasattr(appointment.status, 'value') else appointment.status
+            response_list.append({
+                "id": str(appointment.id),
+                "title": appointment.title,
+                "start_time": appointment.start_time,
+                "end_time": appointment.end_time,
+                "status": appointment_status,
+                "is_conflict": True,
+                "message": "Conflict found",
+                "participants": [{"id": str(participant.id), "full_name": participant.full_name} for participant in appointment.participant]
+            })
+        return response_list
 
     @classmethod
     def create_appointment(cls, db: Session, request):
-        all_apts = cls.get_appointments(db=db)
-        is_conflict = conflict_engine.check_conflict(request.start_time, request.end_time, all_apts)
+        all_appointments = cls.get_appointments(db=db)
+        is_conflict = conflict_engine.check_conflict(request.start_time, request.end_time, all_appointments)
 
         if is_conflict:
             raise HTTPException(status_code=400, detail="Cannot create appointment. There is a scheduling conflict.")
 
-        new_apt = appointments.AppointmentsData.create_appointment(db, request)
-        status_str = new_apt.status.value if hasattr(new_apt.status, 'value') else new_apt.status
+        new_appointment = appointments.AppointmentsData.create_appointment(db, request)
+        appointment_status = new_appointment.status.value if hasattr(new_appointment.status, 'value') else new_appointment.status
 
         return {
-            "id": str(new_apt.id),
-            "title": new_apt.title,
-            "start_time": new_apt.start_time,
-            "end_time": new_apt.end_time,
-            "status": status_str,
-            "is_conflict": is_conflict,
+            "id": str(new_appointment.id),
+            "title": new_appointment.title,
+            "start_time": new_appointment.start_time,
+            "end_time": new_appointment.end_time,
+            "status": appointment_status,
             "message": "Appointment created with conflict" if is_conflict else "Appointment created successfully",
-            "participant": [{"id": str(p.id), "full_name": p.full_name} for p in new_apt.participant]
+            "participants": [{"id": str(participant.id), "full_name": participant.full_name} for participant in new_appointment.participant]
         }
 
     @classmethod
     def update_appointment(cls, db: Session, appointment_id: str, request):
-        all_apts = cls.get_appointments(db=db)
-        is_conflict = conflict_engine.check_conflict(request.start_time, request.end_time, all_apts, exclude_id=appointment_id)
+        database_appointment = appointments.AppointmentsData.get_appointment_by_id(db, appointment_id)
+        if not database_appointment:
+            raise HTTPException(status_code=404, detail="Appointment not found.")
+
+        effective_start_time = request.start_time if request.start_time is not None else database_appointment.start_time
+        effective_end_time = request.end_time if request.end_time is not None else database_appointment.end_time
+
+        all_appointments = cls.get_appointments(db=db)
+        is_conflict = conflict_engine.check_conflict(effective_start_time, effective_end_time, all_appointments, exclude_id=appointment_id)
         
         if is_conflict:
             raise HTTPException(status_code=400, detail="Cannot update appointment. There is a scheduling conflict.")
             
-        updated_apt = appointments.AppointmentsData.update_appointment(db, appointment_id, request)
-        if not updated_apt:
+        updated_appointment = appointments.AppointmentsData.update_appointment(db, appointment_id, request)
+        if not updated_appointment:
             raise HTTPException(status_code=404, detail="Appointment not found.")
             
-        status_str = updated_apt.status.value if hasattr(updated_apt.status, 'value') else updated_apt.status
+        appointment_status = updated_appointment.status.value if hasattr(updated_appointment.status, 'value') else updated_appointment.status
         
         return {
-            "id": str(updated_apt.id),
-            "title": updated_apt.title,
-            "start_time": updated_apt.start_time,
-            "end_time": updated_apt.end_time,
-            "status": status_str,
-            "is_conflict": is_conflict,
+            "id": str(updated_appointment.id),
+            "title": updated_appointment.title,
+            "start_time": updated_appointment.start_time,
+            "end_time": updated_appointment.end_time,
+            "status": appointment_status,
             "message": "Appointment updated successfully",
-            "participant": [{"id": str(p.id), "full_name": p.full_name} for p in updated_apt.participant]
+            "participants": [{"id": str(participant.id), "full_name": participant.full_name} for participant in updated_appointment.participant]
         }
 
     @classmethod
     def delete_appointment(cls, db: Session, appointment_id: str):
-        deleted_apt = appointments.AppointmentsData.update_appointment_status(db, appointment_id, "Deleted")
-        if not deleted_apt:
+        deleted_appointment = appointments.AppointmentsData.update_appointment_status(db, appointment_id, "Deleted")
+        if not deleted_appointment:
             raise HTTPException(status_code=404, detail="Appointment not found.")
-        return {"message": "Appointment deleted successfully"}
+            
+        appointment_status = deleted_appointment.status.value if hasattr(deleted_appointment.status, 'value') else deleted_appointment.status
+        return {
+            "id": str(deleted_appointment.id),
+            "title": deleted_appointment.title,
+            "start_time": deleted_appointment.start_time,
+            "end_time": deleted_appointment.end_time,
+            "status": appointment_status,
+            "message": "Appointment deleted successfully",
+            "participants": [{"id": str(participant.id), "full_name": participant.full_name} for participant in deleted_appointment.participant]
+        }
 
-    @classmethod
-    def cancel_appointment(cls, db: Session, appointment_id: str):
-        canceled_apt = appointments.AppointmentsData.update_appointment_status(db, appointment_id, "Canceled")
-        if not canceled_apt:
-            raise HTTPException(status_code=404, detail="Appointment not found.")
-        return {"message": "Appointment canceled successfully"}
+
 
     @classmethod
     def get_all_appointments(cls, db: Session):
         query = cls.get_appointments(db=db)
         conflicts = conflict_engine.get_conflicting_appointment_ids(query)
-        nearbys = conflict_engine.get_nearby_appointment_ids(query)
+        nearby_appointment_ids = conflict_engine.get_nearby_appointment_ids(query)
 
         response_list = []
-        for apt in query:
-            is_conflict = apt.id in conflicts
-            is_nearby = apt.id in nearbys
+        for appointment in query:
+            is_conflict = appointment.id in conflicts
+            is_nearby = appointment.id in nearby_appointment_ids
 
-            status_str = apt.status.value if hasattr(apt.status, 'value') else apt.status
-            if status_str == "Scheduled" and is_nearby and not is_conflict:
-                status_str = "Scheduled (Warning)"
+            appointment_status = appointment.status.value if hasattr(appointment.status, 'value') else appointment.status
+            if appointment_status == "Scheduled" and is_nearby and not is_conflict:
+                appointment_status = "Scheduled (Warning)"
 
             response_list.append({
-                "id": str(apt.id),
-                "title": apt.title,
-                "start_time": apt.start_time,
-                "end_time": apt.end_time,
-                "status": status_str,
-                "is_conflict": is_conflict,
+                "id": str(appointment.id),
+                "title": appointment.title,
+                "start_time": appointment.start_time,
+                "end_time": appointment.end_time,
+                "status": appointment_status,
                 "message": "Conflict found" if is_conflict else "No conflict",
-                "participant": [{"id": str(p.id), "full_name": p.full_name} for p in apt.participant]
+                "participants": [{"id": str(participant.id), "full_name": participant.full_name} for participant in appointment.participant]
             })
         return response_list

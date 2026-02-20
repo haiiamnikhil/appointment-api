@@ -6,10 +6,11 @@ from config.database import Base
 
 
 class AppointmentStatus(str, enum.Enum):
-    in_progress = "In-progress"
-    canceled = "Canceled"
-    scheduled = "Scheduled"
-    deleted = "Deleted"
+    in_progress = "in-progress"
+    canceled = "canceled"
+    scheduled = "scheduled"
+    deleted = "deleted"
+    completed = "completed"
 
 class Appointment(Base):
     __tablename__ = "appointments"
