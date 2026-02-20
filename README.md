@@ -1,92 +1,114 @@
-# Appointment API Microservice
+# Manage Appointments Microservice API
 
-A Python-based backend microservice built with **FastAPI** and **SQLAlchemy** to manage and schedule appointments.
+A robust FastAPI backend microservice for scheduling, validating, and managing dynamic appointments. It uses SQLAlchemy for robust ORM data handling and Pydantic for rigid, granular input/output schema validation.
 
-This API provides endpoints for scheduling meetings, validating participants, and an integrated **Conflict Detection Engine** that strictly blocks overlapping time slots automatically while monitoring for adjacent schedules to throw warnings.
+## Core Features
 
----
-
-## 🚀 Features
-
-- **FastAPI Framework:** High-performance async routing with built-in OpenAPI/Swagger docs.
-- **Conflict Prevention Engine:** Ensures no two appointments occupy the exact same timeline.
-- **Smart Warnings System:** Automatically flags appointments as `Scheduled (Warning)` if another meeting is scheduled sequentially (within 30 minutes).
-- **Participant Mapping:** Supports scheduling multiple dynamic participants per meeting.
-- **Enum Status Tracking:** Tracks appointment life cycles: `In-progress`, `Canceled`, `Scheduled`, and `Deleted`.
+- **Conflict Engine**: Automatically prevents double-booking across participants via an active time-boundary collision algorithm (`services/conflict_engine.py`).
+- **Granular API Schemas**: Tightly decoupled schemas ensuring explicit validation boundaries (e.g., separating creation requirements from status patches).
+- **Dynamic Status Updates**: Lightweight integration using strict `enum` types (`scheduled`, `in-progress`, `canceled`, `completed`, `deleted`).
+- **Soft Deletion**: Records can be dynamically archived or canceled without permanently dropping rows from the underlying database relationships.
 
 ---
 
-## 🛠️ Tech Stack
+## Application Architecture
 
-- **Backend:** Python + FastAPI
-- **Database:** SQLite (via SQLAlchemy ORM)
-- **Validation:** Pydantic (V2)
-- **ASGI Server:** Uvicorn
+The application is structured into decoupled layers allowing clean business logic interpolation:
 
----
-
-## 📦 Installation & Setup
-
-1. **Clone the repository** (if you haven't already):
-
-```bash
-git clone https://github.com/haiiamnikhil/appointment-api.git
-cd appointment-api/api
-```
-
-2. **Create a Virtual Environment** (Recommended):
-
-```bash
-python -m venv .venv
-# Activate on Windows:
-.\.venv\Scripts\activate
-# Activate on Linux/Mac:
-source .venv/bin/activate
-```
-
-3. **Install Dependencies**:
-
-```bash
-pip install "fastapi[all]" sqlalchemy
-```
-
-4. **Initialize Database & Run Server**:
-
-```bash
-uvicorn main:app --reload
-```
+- **`routes/appointments.py`**: API controllers defining FastAPI routes and injecting `Session` dependencies.
+- **`actions/appointments.py`**: Intermediary logic evaluating conflict structures and manipulating outputs before Database injection.
+- **`data/appointments.py`**: Core SQLAlchemy operations reading and mutating explicit records.
+- **`models/`**: SQL relational tables mapping Python object attributes natively onto persistent Data architectures.
+- **`schemas/`**: Pydantic validation structures rigidly matching inbound (`requests.py`) and outbound (`responses.py`) endpoints securely.
 
 ---
 
-## 📡 API Endpoints
+## API Endpoints (`/appointment/v1/`)
 
-Once running, navigate to the auto-generated Swagger documentation at `http://127.0.0.1:8000/docs` to test!
+### 1. `POST /create/`
 
-### 1. `POST /appointment/v1/create/`
-
-Creates a new appointment.
-**Payload:**
+Create a brand new appointment manually. By default, applications successfully built through here will internally map to `status: "scheduled"`.
+**Request Payload Layout (`AppointmentRequest`)**:
 
 ```json
 {
   "title": "Strategy Sync",
-  "description": "Discussing architectural changes",
-  "start_time": "2026-02-21T10:00:00Z",
-  "end_time": "2026-02-21T11:00:00Z",
-  "participants": ["Alice", "Bob"]
+  "description": "Quarterly planning.",
+  "start_time": "2024-03-25T10:00:00Z",
+  "end_time": "2024-03-25T11:00:00Z",
+  "participants": ["John Doe", "Jane Smith"]
 }
 ```
 
-**Response (Success):** returns the dictionary mapped with a dynamically assigned ID and status string. Raises a `400 Bad Request` if the target timeslot is already booked.
+### 2. `POST /ajax/v1/is-conflict/`
 
-### 2. `GET /appointment/v1/list/`
+Validates an incoming timeframe strictly to assert if _any_ scheduling boundary logic exists across the entire database. Excludes canceled or deleted relationships seamlessly.
+**Request Payload Layout (`AppointmentValidationRequest`)**:
 
-Retrieves all scheduled appointments securely ordered chronologically while injecting `Scheduled (Warning)` status properties if back-to-back meeting buffers are triggered.
+```json
+{
+  "start_time": "2024-03-25T10:00:00Z",
+  "end_time": "2024-03-25T11:00:00Z"
+}
+```
 
-### 3. `POST /ajax/v1/is-conflict/`
+**Response Details**: Distinctively returns an `AppointmentValidationResponse` array dynamically injecting `"is_conflict": true` on colliding events cleanly.
 
-Validates whether a proposed timeframe overlaps against the database silently mapping an `is_conflict` boolean string to the client.
+### 3. `GET /list/`
 
-## 🤝 Contributing
+Retrieves a Chronologically ordered array of every appointment mapped into the backend natively.
 
-Contributions, issues, and feature requests are welcome! Feel free to check the issues page.
+### 4. `PUT /update/{appointment_id}`
+
+Overwrites standard editable inputs safely. Explicitly supports partial-patch mapping dynamically via Pydantics `Optional[...]` parameters.
+**Request Payload Layout (`AppointmentUpdateRequest`)**:
+
+```json
+{
+  "title": "Strategy Sync Updated",
+  "start_time": "2024-03-25T11:30:00Z",
+  "participants": ["John Doe"]
+}
+```
+
+### 5. `PATCH /update/{appointment_id}`
+
+Dynamically manipulates strictly the database `status` indexing safely preventing overlapping payloads updating broader requirements improperly.
+**Request Payload Layout (`AppointmentStatusUpdate`)**:
+
+```json
+{
+  "status": "completed"
+}
+```
+
+### 6. `DELETE /delete/{appointment_id}`
+
+Performs intuitive "Soft Deletions" targeting the ID and permanently appending the `"deleted"` string directly toward the database index cleanly.
+
+---
+
+## Development & Setup
+
+### Requirements
+
+- **Python 3.10+**
+- **FastAPI**
+- **SQLAlchemy** (Native SQLite bindings mapped inherently via `Base.metadata.create_all(bind=engine)`)
+
+### Quick Start
+
+```bash
+# Optional Setup: Create Virtual Environment
+python -m venv venv
+source venv/bin/activate  # (Windows: venv\Scripts\activate)
+
+# 1. Install Dependencies
+pip install -r requirements.txt
+
+# 2. Boot Application
+python main.py
+```
+
+- **Interactive API Documentation (Swagger)**: http://127.0.0.1:8000/docs
+- **Alternative Redoc**: http://127.0.0.1:8000/redoc

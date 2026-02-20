@@ -1,11 +1,15 @@
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
+
 from data import appointments
 from services import conflict_engine
 
-from fastapi import HTTPException
-
 
 class AppointmentsActions:
+
+    @staticmethod
+    def get_all_statuses():
+        return {"statuses": [status.value for status in appointments.AppointmentsData.get_all_statuses()]}
 
     @staticmethod
     def get_appointments(db: Session):
@@ -48,7 +52,6 @@ class AppointmentsActions:
             "start_time": new_appointment.start_time,
             "end_time": new_appointment.end_time,
             "status": appointment_status,
-            "message": "Appointment created with conflict" if is_conflict else "Appointment created successfully",
             "participants": [{"id": str(participant.id), "full_name": participant.full_name} for participant in new_appointment.participant]
         }
 
@@ -58,8 +61,11 @@ class AppointmentsActions:
         if not database_appointment:
             raise HTTPException(status_code=404, detail="Appointment not found.")
 
-        effective_start_time = request.start_time if request.start_time is not None else database_appointment.start_time
-        effective_end_time = request.end_time if request.end_time is not None else database_appointment.end_time
+        request_start = getattr(request, 'start_time', None)
+        request_end = getattr(request, 'end_time', None)
+        
+        effective_start_time = request_start if request_start is not None else database_appointment.start_time
+        effective_end_time = request_end if request_end is not None else database_appointment.end_time
 
         all_appointments = cls.get_appointments(db=db)
         is_conflict = conflict_engine.check_conflict(effective_start_time, effective_end_time, all_appointments, exclude_id=appointment_id)
@@ -79,7 +85,6 @@ class AppointmentsActions:
             "start_time": updated_appointment.start_time,
             "end_time": updated_appointment.end_time,
             "status": appointment_status,
-            "message": "Appointment updated successfully",
             "participants": [{"id": str(participant.id), "full_name": participant.full_name} for participant in updated_appointment.participant]
         }
 
@@ -96,7 +101,6 @@ class AppointmentsActions:
             "start_time": deleted_appointment.start_time,
             "end_time": deleted_appointment.end_time,
             "status": appointment_status,
-            "message": "Appointment deleted successfully",
             "participants": [{"id": str(participant.id), "full_name": participant.full_name} for participant in deleted_appointment.participant]
         }
 
@@ -123,7 +127,6 @@ class AppointmentsActions:
                 "start_time": appointment.start_time,
                 "end_time": appointment.end_time,
                 "status": appointment_status,
-                "message": "Conflict found" if is_conflict else "No conflict",
                 "participants": [{"id": str(participant.id), "full_name": participant.full_name} for participant in appointment.participant]
             })
         return response_list

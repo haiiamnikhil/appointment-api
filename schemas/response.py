@@ -17,7 +17,6 @@ class AppointmentCreateResponse(BaseModel):
     start_time: datetime
     end_time: datetime
     status: AppointmentStatus
-    message: str
     participants: List[ParticipantResponse] = []
 
     class Config:
@@ -25,3 +24,7 @@ class AppointmentCreateResponse(BaseModel):
 
 class AppointmentValidationResponse(AppointmentCreateResponse):
     is_conflict: bool
+    message: str
+
+class StatusListResponse(BaseModel):
+    statuses: List[str]

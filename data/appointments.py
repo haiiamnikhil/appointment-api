@@ -1,6 +1,6 @@
 import uuid
 from sqlalchemy.orm import Session
-from models.appointment import Appointment
+from models.appointment import Appointment, AppointmentStatus
 from models.participants import Participants
 
 class AppointmentsData:
@@ -43,22 +43,29 @@ class AppointmentsData:
         if not database_appointment:
             return None
         
-        if appointment_request.title is not None:
-            database_appointment.title = appointment_request.title
-        if appointment_request.description is not None:
-            database_appointment.description = appointment_request.description
-        if appointment_request.start_time is not None:
-            database_appointment.start_time = appointment_request.start_time
-        if appointment_request.end_time is not None:
-            database_appointment.end_time = appointment_request.end_time
-        if getattr(appointment_request, 'status', None) is not None:
-            database_appointment.status = appointment_request.status
+        req_title = getattr(appointment_request, 'title', None)
+        req_description = getattr(appointment_request, 'description', None)
+        req_start_time = getattr(appointment_request, 'start_time', None)
+        req_end_time = getattr(appointment_request, 'end_time', None)
+        req_status = getattr(appointment_request, 'status', None)
+        req_participants = getattr(appointment_request, 'participants', None)
+
+        if req_title is not None:
+            database_appointment.title = req_title
+        if req_description is not None:
+            database_appointment.description = req_description
+        if req_start_time is not None:
+            database_appointment.start_time = req_start_time
+        if req_end_time is not None:
+            database_appointment.end_time = req_end_time
+        if req_status is not None:
+            database_appointment.status = req_status
         
         # Replace participants only if strictly provided
-        if appointment_request.participants is not None:
+        if req_participants is not None:
             db.query(Participants).filter(Participants.appointment_id == database_appointment.id).delete()
             database_appointment.participant = []
-            for participant_name in appointment_request.participants:
+            for participant_name in req_participants:
                 database_appointment.participant.append(
                     Participants(full_name=participant_name)
                 )
@@ -77,3 +84,7 @@ class AppointmentsData:
         db.commit()
         db.refresh(database_appointment)
         return database_appointment
+
+    @staticmethod
+    def get_all_statuses():
+        return AppointmentStatus
