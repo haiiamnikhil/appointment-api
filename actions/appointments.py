@@ -49,6 +49,45 @@ class AppointmentsActions:
         }
 
     @classmethod
+    def update_appointment(cls, db: Session, appointment_id: str, request):
+        all_apts = cls.get_appointments(db=db)
+        is_conflict = conflict_engine.check_conflict(request.start_time, request.end_time, all_apts, exclude_id=appointment_id)
+        
+        if is_conflict:
+            raise HTTPException(status_code=400, detail="Cannot update appointment. There is a scheduling conflict.")
+            
+        updated_apt = appointments.AppointmentsData.update_appointment(db, appointment_id, request)
+        if not updated_apt:
+            raise HTTPException(status_code=404, detail="Appointment not found.")
+            
+        status_str = updated_apt.status.value if hasattr(updated_apt.status, 'value') else updated_apt.status
+        
+        return {
+            "id": str(updated_apt.id),
+            "title": updated_apt.title,
+            "start_time": updated_apt.start_time,
+            "end_time": updated_apt.end_time,
+            "status": status_str,
+            "is_conflict": is_conflict,
+            "message": "Appointment updated successfully",
+            "participant": [{"id": str(p.id), "full_name": p.full_name} for p in updated_apt.participant]
+        }
+
+    @classmethod
+    def delete_appointment(cls, db: Session, appointment_id: str):
+        deleted_apt = appointments.AppointmentsData.update_appointment_status(db, appointment_id, "Deleted")
+        if not deleted_apt:
+            raise HTTPException(status_code=404, detail="Appointment not found.")
+        return {"message": "Appointment deleted successfully"}
+
+    @classmethod
+    def cancel_appointment(cls, db: Session, appointment_id: str):
+        canceled_apt = appointments.AppointmentsData.update_appointment_status(db, appointment_id, "Canceled")
+        if not canceled_apt:
+            raise HTTPException(status_code=404, detail="Appointment not found.")
+        return {"message": "Appointment canceled successfully"}
+
+    @classmethod
     def get_all_appointments(cls, db: Session):
         query = cls.get_appointments(db=db)
         conflicts = conflict_engine.get_conflicting_appointment_ids(query)

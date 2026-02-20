@@ -12,4 +12,9 @@ class AppointmentRequest(BaseModel):
     end_time:datetime
     participants: List[str] = []
 
-
+class AppointmentUpdateRequest(BaseModel):
+    title:str
+    description:str
+    start_time:datetime
+    end_time:datetime
+    participants: List[str] = []
