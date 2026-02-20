@@ -1,0 +1,32 @@
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from typing import List
+
+from config.database import SessionMaker
+from schemas import request, response
+from actions import appointments
+
+router = APIRouter()
+
+
+def get_db():
+    db = SessionMaker()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+@router.post('/ajax/v1/is-conflict/', response_model=response.AppointmentCreateResponse)
+def validate_conflict_ajax(appointment: request.AppointmentRequest, db: Session = Depends(get_db)):
+    return appointments.AppointmentsActions.validate_conflict(db=db, request=appointment)
+
+
+@router.post('/appointment/v1/create/', response_model=response.AppointmentCreateResponse)
+def create_appointment_api(appointment: request.AppointmentRequest, db: Session = Depends(get_db)):
+    return appointments.AppointmentsActions.create_appointment(db=db, request=appointment)
+
+
+@router.get('/appointment/v1/list/', response_model=List[response.AppointmentCreateResponse])
+def list_appointments_api(db: Session = Depends(get_db)):
+    return appointments.AppointmentsActions.get_all_appointments(db=db)
