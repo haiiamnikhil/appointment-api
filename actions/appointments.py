@@ -108,7 +108,7 @@ class AppointmentsActions:
 
     @classmethod
     def delete_appointment(cls, db: Session, appointment_id: str):
-        deleted_appointment = appointments.AppointmentsData.update_appointment_status(db, appointment_id, "Deleted")
+        deleted_appointment = appointments.AppointmentsData.update_appointment_status(db, appointment_id, "deleted")
         if not deleted_appointment:
             raise HTTPException(status_code=404, detail="Appointment not found.")
             

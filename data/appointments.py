@@ -37,9 +37,9 @@ class AppointmentsData:
             return None
         return db.query(Appointment).filter(Appointment.id == appointment_uuid).first()
 
-    @staticmethod
-    def update_appointment(db: Session, appointment_id: str, appointment_request):
-        database_appointment = AppointmentsData.get_appointment_by_id(db, appointment_id)
+    @classmethod
+    def update_appointment(cls, db: Session, appointment_id: str, appointment_request):
+        database_appointment = cls.get_appointment_by_id(db, appointment_id)
         if not database_appointment:
             return None
         
@@ -74,9 +74,9 @@ class AppointmentsData:
         db.refresh(database_appointment)
         return database_appointment
 
-    @staticmethod
-    def update_appointment_status(db: Session, appointment_id: str, status: str):
-        database_appointment = AppointmentsData.get_appointment_by_id(db, appointment_id)
+    @classmethod
+    def update_appointment_status(cls, db: Session, appointment_id: str, status: str):
+        database_appointment = cls.get_appointment_by_id(db, appointment_id)
         if not database_appointment:
             return None
         
